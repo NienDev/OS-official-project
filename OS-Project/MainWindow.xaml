@@ -123,6 +123,7 @@
                 <Setter.Value>
                     <ControlTemplate TargetType="{x:Type Button}">
                         <ContentPresenter x:Name="contentPresenter" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        
                         <ControlTemplate.Triggers>
                             <DataTrigger Binding="{Binding IsMaximized}" Value="True">
                                 <Setter TargetName="contentPresenter" Property="Content">

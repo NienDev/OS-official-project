@@ -133,7 +133,13 @@
     <Resource Include="Views\folder.png" />
   </ItemGroup>
   <ItemGroup>
-    <Folder Include="images\" />
+    <Resource Include="Views\open-folder.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="images\file.png" />
+    <Resource Include="images\folder.png" />
+    <Resource Include="images\open-folder.png" />
+    <Resource Include="images\usb.png" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

@@ -104,12 +104,29 @@ namespace OS_Project.Views
             public ulong starting_position { get; set; }
         }
 
-        public class NodeInfo
+        public class NodeInfo : ObservableObject
         {
             public string fullpath;
             public ulong RDET_start;
             public ulong sub_dir_start;
             public bool isFile;
+            private bool _isExpanded;
+            public bool isExpanded;
+              
+            public NodeInfo() { 
+               
+
+            }
+
+            public NodeInfo(NodeInfo _a)
+            {
+                fullpath = _a.fullpath;
+                RDET_start = _a.RDET_start;
+                sub_dir_start = _a.sub_dir_start;
+                isFile = _a.isFile;
+                isExpanded = _a.isExpanded;
+                OnPropertyChanged("Tag");
+            }
         }
 
         public static string PATH = @"\\.\PhysicalDrive1";
@@ -349,6 +366,8 @@ namespace OS_Project.Views
             } else
             {
                 FAT fat = new FAT(info.starting_position, info.name);
+                FolderView.Items.Clear();
+                
                 getFATFileFolderNames(fat.RDET, fat.starting_RDET, fat.driveName, null);
                 
             }
@@ -370,6 +389,8 @@ namespace OS_Project.Views
             // return the string after the last backslash(the name we want to find)
             return path.Substring(lastIndex + 1);
         }
+
+    
 
         public void getFATFileFolderNames(byte[] data, ulong starting_RDET, string path, TreeViewItem item)
         {
@@ -409,9 +430,11 @@ namespace OS_Project.Views
                             RDET_start = starting_RDET,
                             sub_dir_start = 0,
                             isFile = true,
+                            isExpanded = false
                         };
 
                         sub_item.Tag = info;
+                      
 
                         if (data[index * 32 + 11] != 0x16 && name != "." && name != "..") // ignore system file
                         {
@@ -427,10 +450,13 @@ namespace OS_Project.Views
 
                                 info.sub_dir_start = starting_RDET + (startingCluster - 2) * 8 * 512;
                                 info.isFile = false;
+                               
+
                                 if (isAnyFileFolder(info.sub_dir_start))
                                 {
                                     sub_item.Items.Add(null);
                                     sub_item.Expanded += Folder_Expanded;
+                                    sub_item.Collapsed += Folder_Collapsed;
                                 }
 
                                 //startingClusters.Enqueue();
@@ -444,10 +470,7 @@ namespace OS_Project.Views
                             {
                                 item.Items.Add(sub_item);
                             }
-
                         }
-
-                      
                         name = "";
 
                     }
@@ -458,6 +481,7 @@ namespace OS_Project.Views
 
         private bool isAnyFileFolder(ulong startingPosition)
         {
+
             byte[] data = new byte[512];
             using (FileStream fs = new FileStream(PATH, FileMode.Open, FileAccess.Read))
             {
@@ -469,30 +493,59 @@ namespace OS_Project.Views
             return true;
         }
 
-        private void Folder_Expanded(object sender, RoutedEventArgs e)
+        private void Folder_Collapsed(object sender, RoutedEventArgs e)
         {
-            var item = (TreeViewItem)sender;
-            // if the list contain only dummy data
-            if (item.Items.Count != 1 || item.Items[0] != null) return;
-
-            // clear dummy data
-            item.Items.Clear();
-
-            NodeInfo info = (NodeInfo)item.Tag;
-
-            byte[] sub_dir = new byte[512];
-
-            using (FileStream fs = new FileStream(PATH, FileMode.Open, FileAccess.Read))
+            if (!e.Handled)
             {
-                fs.Seek((long)(info.sub_dir_start), SeekOrigin.Begin); //
-                fs.Read(sub_dir, 0, sub_dir.Length);
-                fs.Close();
-            }
+                var item = (TreeViewItem)sender;
+         
 
-            getFATFileFolderNames(sub_dir, info.RDET_start, info.fullpath, item);
+                // if the list contain only dummy data
+
+                NodeInfo info = (NodeInfo)item.Tag;
+                info.isExpanded = false;
+                item.Tag = new NodeInfo(info);
+                e.Handled = true;
+            }            
         }
 
+        private void Folder_Expanded(object sender, RoutedEventArgs e)
+         {
+            if (!e.Handled)
+            {
+               
+                var item = (TreeViewItem)sender;
+
+                // if the list contain only dummy data
+                NodeInfo info = (NodeInfo)item.Tag;
+                info.isExpanded = true;
+                item.Tag = new NodeInfo(info);
+
+                if (item.Items.Count != 1 || item.Items[0] != null) return;
+
+                // clear dummy data
+                item.Items.Clear();
+
+
+
+                byte[] sub_dir = new byte[512];
+
+                using (FileStream fs = new FileStream(PATH, FileMode.Open, FileAccess.Read))
+                {
+                    fs.Seek((long)(info.sub_dir_start), SeekOrigin.Begin); //
+                    fs.Read(sub_dir, 0, sub_dir.Length);
+                    fs.Close();
+                }
+
+
+
+                getFATFileFolderNames(sub_dir, info.RDET_start, info.fullpath, item);
+
+                e.Handled = true;
+            }
+          
+          
+        }
+       
     }
-
-
 }

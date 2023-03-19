@@ -5,7 +5,7 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
              xmlns:local="clr-namespace:OS_Project"
              mc:Ignorable="d" 
-             d:DesignHeight="450" d:DesignWidth="800"
+             d:DesignHeight="800" d:DesignWidth="800"
              
             Loaded="TreeView_Loaded"             
 >
@@ -139,30 +139,33 @@
                 </ListBox.Resources>
             </ListBox>
         </StackPanel>
-        <Border  Grid.Column="1" BorderThickness="2" BorderBrush="#D7E5FA">
-            <StackPanel x:Name="TreeViewContainer">
-                <TreeView x:Name="FolderView">
-                    <TreeView.Resources>
-                        <Style TargetType="{x:Type TreeViewItem}">
-                            <Setter Property="HeaderTemplate">
-                                <Setter.Value>
-                                    <DataTemplate>
-                                        <StackPanel Orientation="Horizontal">
-                                            <Image Width="20" Margin="3" 
+      
+            <Border  Grid.Column="1" BorderThickness="2" BorderBrush="#D7E5FA" Height="714">
+            <ScrollViewer>
+                <StackPanel x:Name="TreeViewContainer">
+                    <TreeView x:Name="FolderView" BorderBrush="Transparent">
+                        <TreeView.Resources>
+                            <Style TargetType="{x:Type TreeViewItem}">
+                                <Setter Property="HeaderTemplate">
+                                    <Setter.Value>
+                                        <DataTemplate>
+                                            <StackPanel Orientation="Horizontal">
+                                                <Image x:Name="TreeViewItemIcon" Width="40" Margin="3" 
                                                    Source="{Binding RelativeSource={RelativeSource Mode=FindAncestor, AncestorType={x:Type TreeViewItem}}, Path=Tag, Converter={x:Static local:HeaderToImageConverter.Instance}}"  />
-                                            <TextBlock VerticalAlignment="Center" Text="{Binding}"/>
-                                        </StackPanel>
-                                    </DataTemplate>
-                                </Setter.Value>
-                            </Setter>
-                           
-                        </Style>
+                                                <TextBlock FontFamily="Poppins" FontSize="16" VerticalAlignment="Center" Text="{Binding}"/>
+                                            </StackPanel>
+                                        </DataTemplate>
+                                    </Setter.Value>
+                                </Setter>
+                            </Style>
 
-                    </TreeView.Resources>
-                </TreeView>
-                <Button>Nien</Button>
-            </StackPanel>
+                        </TreeView.Resources>
+                    </TreeView>
+                </StackPanel>
+            </ScrollViewer>
         </Border>
+        
+        
 
         <Border Grid.Column="2">
             <StackPanel x:Name="DetailInfoContainer">
