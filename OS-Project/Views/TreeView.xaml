@@ -5,9 +5,9 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
              xmlns:local="clr-namespace:OS_Project"
              mc:Ignorable="d" 
-             d:DesignHeight="800" d:DesignWidth="800"
+             d:DesignHeight="800" d:DesignWidth="1200"
              
-            Loaded="TreeView_Loaded"             
+                 
 >
     <UserControl.Resources>
         <Style x:Key="FocusVisual">
@@ -23,8 +23,8 @@
         <SolidColorBrush x:Key="Button.Static.Border" Color="Transparent"/>
         <SolidColorBrush x:Key="Button.MouseOver.Background" Color="#D7E5FA"/>
         <SolidColorBrush x:Key="Button.MouseOver.Border" Color="#D7E5FA"/>
-        <SolidColorBrush x:Key="Button.Pressed.Background" Color="#FFC4E5F6"/>
-        <SolidColorBrush x:Key="Button.Pressed.Border" Color="#FF2C628B"/>
+        <SolidColorBrush x:Key="Button.Pressed.Background" Color="Transparent"/>
+        <SolidColorBrush x:Key="Button.Pressed.Border" Color="Transparent"/>
         <SolidColorBrush x:Key="Button.Disabled.Background" Color="#FFF4F4F4"/>
         <SolidColorBrush x:Key="Button.Disabled.Border" Color="#FFADB2B5"/>
         <SolidColorBrush x:Key="Button.Disabled.Foreground" Color="#FF838383"/>
@@ -66,35 +66,6 @@
             </Setter>
         </Style>
 
-        <Style x:Key="CustomListBoxItem" TargetType="ListBoxItem">
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="{x:Type ListBoxItem}">
-
-                        <Button Style="{DynamicResource hover_driver_btn}" HorizontalAlignment="Center" Background="Transparent">
-
-                            <Grid Margin="12">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*"></ColumnDefinition>
-                                    <ColumnDefinition Width="*"></ColumnDefinition>
-                                </Grid.ColumnDefinitions>
-
-                                <StackPanel Grid.Column="0">
-                                    <Image Source="/Views/usb.png" Margin="8" Width="76" Height="76"/>
-                                </StackPanel>
-                                <StackPanel Grid.Column="1" Margin="0 16 0 0">
-                                    <TextBlock Text="name" FontSize="20" FontWeight="Bold" FontFamily="poppins"/>
-                                    <TextBlock Text="type" FontSize="18" FontFamily="poppins"/>
-                                </StackPanel>
-
-                            </Grid>
-
-
-                        </Button>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
-        </Style>
 
 
     </UserControl.Resources>
@@ -103,14 +74,18 @@
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="300"></ColumnDefinition>
             <ColumnDefinition Width="550"></ColumnDefinition>
-            <ColumnDefinition Width="300"></ColumnDefinition>
+            <ColumnDefinition Width="250"></ColumnDefinition>
         </Grid.ColumnDefinitions>
+
+        <!--#region DriverContainer -->
         <StackPanel x:Name="DriverContainer" Grid.Column="0">
             <Border BorderThickness="0,0,0,2" BorderBrush="#D7E5FA">
                 <StackPanel>
-                    <TextBlock Margin="8" FontSize="16" FontFamily="poppins">Drivers</TextBlock>
+                    <TextBlock Margin="8" FontSize="16" FontFamily="poppins" Foreground="#061A49" FontWeight="SemiBold">Drivers</TextBlock>
                 </StackPanel>
             </Border>
+
+            <!--#region Drivers Display -->
             <ListBox x:Name="DriversList" ItemsSource="{Binding Drivers}" Margin="12" BorderBrush="Transparent">
                 <ListBox.Resources>
                     <Style TargetType="ListBoxItem">
@@ -127,8 +102,8 @@
                                                 <Image Source="/Views/usb.png" Width="64" Height="76"/>
                                             </StackPanel>
                                             <StackPanel Grid.Column="1" Margin="0 12 0 0">
-                                                <TextBlock x:Name="driveName" Text="{Binding fullname}" FontSize="18" FontWeight="Bold" FontFamily="poppins"/>
-                                                <TextBlock Text="{Binding type}" FontSize="16" FontFamily="poppins"/>
+                                                <TextBlock x:Name="driveName" Text="{Binding fullname}" FontSize="18" FontWeight="Bold" FontFamily="poppins" Foreground="#061A49"/>
+                                                <TextBlock Text="{Binding type}" FontSize="16" FontFamily="poppins" Foreground="#061A49"/>
                                             </StackPanel>
                                         </Grid>
                                     </Button>
@@ -138,9 +113,11 @@
                     </Style>
                 </ListBox.Resources>
             </ListBox>
+            <!--#endregion-->
         </StackPanel>
-      
-            <Border  Grid.Column="1" BorderThickness="2" BorderBrush="#D7E5FA" Height="714">
+        <!--#endregion-->
+
+        <Border  Grid.Column="1" BorderThickness="2" BorderBrush="#D7E5FA" Height="714">
             <ScrollViewer>
                 <StackPanel x:Name="TreeViewContainer">
                     <TreeView x:Name="FolderView" BorderBrush="Transparent">
@@ -157,6 +134,7 @@
                                         </DataTemplate>
                                     </Setter.Value>
                                 </Setter>
+                                <Setter Property="ToolTip" Value="{Binding}"/>
                             </Style>
 
                         </TreeView.Resources>
@@ -164,12 +142,58 @@
                 </StackPanel>
             </ScrollViewer>
         </Border>
-        
-        
+
+
 
         <Border Grid.Column="2">
-            <StackPanel x:Name="DetailInfoContainer">
-
+            <StackPanel x:Name="DetailInfoContainer" Margin="12">
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center" >
+                    <TextBlock Margin="0 0 4 0" Text="Name:" FontSize="16" FontFamily="Poppins" FontWeight="SemiBold" Foreground="#061A49"/>
+                    <TextBlock x:Name="FName" Margin="0 3.5 0 0" FontSize="12" FontFamily="Poppins" Width="150" TextWrapping="Wrap" Foreground="#061A49"/>
+                </StackPanel>
+                <StackPanel Orientation="Vertical" VerticalAlignment="Center">
+                    <TextBlock Margin="0 0 0 0" Text="Attributes:" FontSize="16" FontFamily="Poppins" FontWeight="SemiBold" Foreground="#061A49"/>
+                    <StackPanel Margin="12 0 0 0" Orientation="Horizontal" VerticalAlignment="Center" >
+                        <TextBlock Text="Archive:" FontSize="14" FontFamily="Poppins" FontWeight="SemiBold" Foreground="#061A49"/>
+                        <TextBlock x:Name="FArchive" Text="" Margin="4 2 0 0" FontSize="12" FontFamily="Poppins" Width="150" TextWrapping="Wrap" Foreground="#061A49"/>
+                    </StackPanel>
+                    <StackPanel Margin="12 0 0 0" Orientation="Horizontal" VerticalAlignment="Center" >
+                        <TextBlock Text="Directory:" FontSize="14" FontFamily="Poppins" FontWeight="SemiBold" Foreground="#061A49"/>
+                        <TextBlock x:Name="FDirectory" Text="" Margin="4 2 0 0" FontSize="12" FontFamily="Poppins" Width="150" TextWrapping="Wrap" Foreground="#061A49"/>
+                    </StackPanel>
+                    <StackPanel Margin="12 0 0 0" Orientation="Horizontal" VerticalAlignment="Center" >
+                        <TextBlock Text="VolLabel:" FontSize="14" FontFamily="Poppins" FontWeight="SemiBold" Foreground="#061A49"/>
+                        <TextBlock x:Name="FVolLabel" Text="" Margin="4 2 0 0" FontSize="12" FontFamily="Poppins" Width="150" TextWrapping="Wrap" Foreground="#061A49"/>
+                    </StackPanel>
+                    <StackPanel Margin="12 0 0 0" Orientation="Horizontal" VerticalAlignment="Center" >
+                        <TextBlock Text="System:" FontSize="14" FontFamily="Poppins" FontWeight="SemiBold" Foreground="#061A49"/>
+                        <TextBlock x:Name="FSystem" Text="" Margin="4 2 0 0" FontSize="12" FontFamily="Poppins" Width="150" TextWrapping="Wrap" Foreground="#061A49"/>
+                    </StackPanel>
+                    <StackPanel Margin="12 0 0 0" Orientation="Horizontal" VerticalAlignment="Center" >
+                        <TextBlock Text="Hidden:" FontSize="14" FontFamily="Poppins" FontWeight="SemiBold" Foreground="#061A49"/>
+                        <TextBlock x:Name="FHidden" Text="" Margin="4 2 0 0" FontSize="12" FontFamily="Poppins" Width="150" TextWrapping="Wrap" Foreground="#061A49"/>
+                    </StackPanel>
+                    <StackPanel Margin="12 0 0 0" Orientation="Horizontal" VerticalAlignment="Center" >
+                        <TextBlock Text="ReadOnly:" FontSize="14" FontFamily="Poppins" FontWeight="SemiBold" Foreground="#061A49"/>
+                        <TextBlock x:Name="FReadOnly" Text="" Margin="4 2 0 0" FontSize="12" FontFamily="Poppins" Width="150" TextWrapping="Wrap" Foreground="#061A49"/>
+                    </StackPanel>
+                </StackPanel>
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center" >
+                    <TextBlock Margin="0 0 4 0" Text="Date Created:" FontSize="16" FontFamily="Poppins" FontWeight="SemiBold" Foreground="#061A49"/>
+                    <TextBlock x:Name="FDate" Text="" Margin="0 3.5 0 0" FontSize="12" FontFamily="Poppins" Width="150" TextWrapping="Wrap" Foreground="#061A49"/>
+                </StackPanel>
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center" >
+                    <TextBlock Margin="0 0 4 0" Text="Time created:" FontSize="16" FontFamily="Poppins" FontWeight="SemiBold" Foreground="#061A49"/>
+                    <TextBlock x:Name="FTime" Text="" Margin="0 3.5 0 0" FontSize="12" FontFamily="Poppins" Width="150" TextWrapping="Wrap" Foreground="#061A49"/>
+                </StackPanel>
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center" >
+                    <TextBlock Margin="0 0 4 0" Text="Time Modified:" FontSize="16" FontFamily="Poppins" FontWeight="SemiBold" Foreground="#061A49"/>
+                    <TextBlock x:Name="FTimeModified" Text="" Margin="0 3.5 0 0" FontSize="12" FontFamily="Poppins" Width="150" TextWrapping="Wrap" Foreground="#061A49"/>
+                </StackPanel>
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center" >
+                    <TextBlock Margin="0 0 4 0" Text="Size:" FontSize="16" FontFamily="Poppins" FontWeight="SemiBold" Foreground="#061A49"/>
+                    <TextBlock x:Name="FSize" Text="" Margin="0 3.5 0 0" FontSize="12" FontFamily="Poppins" Width="150" TextWrapping="Wrap" Foreground="#061A49"/>
+                </StackPanel> 
             </StackPanel>
         </Border>
     </Grid>
