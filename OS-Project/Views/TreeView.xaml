@@ -188,7 +188,7 @@
                 </StackPanel>
                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center" >
                     <TextBlock Margin="0 0 4 0" Text="Time Modified:" FontSize="16" FontFamily="Poppins" FontWeight="SemiBold" Foreground="#061A49"/>
-                    <TextBlock x:Name="FTimeModified" Text="" Margin="0 3.5 0 0" FontSize="12" FontFamily="Poppins" Width="150" TextWrapping="Wrap" Foreground="#061A49"/>
+                    <TextBlock  x:Name="FTimeModified" Margin="0 3.5 0 0" FontSize="12" FontFamily="Poppins" Width="100" TextWrapping="Wrap" Foreground="#061A49"/>
                 </StackPanel>
                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center" >
                     <TextBlock Margin="0 0 4 0" Text="Size:" FontSize="16" FontFamily="Poppins" FontWeight="SemiBold" Foreground="#061A49"/>

@@ -1,6 +1,7 @@
 ﻿using OS_Project.ViewModels;
 using System;
 using System.Collections.Generic;
+using System.Data;
 using System.Data.SqlClient;
 using System.IO;
 using System.Linq;
@@ -16,6 +17,7 @@ using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
 using System.Windows.Shapes;
 using System.Xml.Linq;
+using static OS_Project.Views.TreeView;
 
 namespace OS_Project.Views
 {
@@ -33,6 +35,327 @@ namespace OS_Project.Views
             {
                 Drivers = new List<Driver>();
             }
+        }
+
+
+        public class NTFS
+        {
+            const string SystemFileName = "NTFS";
+            uint BytesPerSector;
+            uint SectorsPerCluster;
+            uint SectorsPerTrack;
+            uint NumOfHeads;
+            uint TotalSectors;
+            uint StartingClusterMFT;
+            uint StartingClusterMFT_mirror;
+            uint BytesPerEntry;
+
+            byte[] buffer = new byte[1024];
+            uint MFTStartInByte;
+
+            //MFT Attribute ID
+            const int STANDARD_INFORMATION = 0x10;
+            const int FILE_NAME = 0x30;
+            const int DATA = 0x80;
+
+
+            public NTFS()
+            {
+                BytesPerSector = 0;
+                SectorsPerCluster = 0;
+                SectorsPerTrack = 0;
+                NumOfHeads = 0;
+                TotalSectors = 0;
+                StartingClusterMFT = 0;
+                StartingClusterMFT_mirror = 0;
+                BytesPerEntry = 0;
+            }
+            public NTFS(uint _BytesPerSector, uint _SectorsPerCluster, uint _SectorsPerTrack, uint _NumOfHeads, uint _TotalSectors, uint _StartingClusterMFT, uint _StartingClusterMFT_mirror, uint _BytesPerEntry)
+            {
+                BytesPerSector = _BytesPerSector;
+                SectorsPerCluster = _SectorsPerCluster;
+                SectorsPerTrack = _SectorsPerTrack;
+                NumOfHeads = _NumOfHeads;
+                TotalSectors = _TotalSectors;
+                StartingClusterMFT = _StartingClusterMFT;
+                StartingClusterMFT_mirror = _StartingClusterMFT_mirror;
+                BytesPerEntry = _BytesPerEntry;
+            }
+
+            public bool GetBitValue(int num, int i)
+            {
+                int mask = 1 << i;
+                int maskedNum = num & mask;
+                return (maskedNum != 0);
+            }
+            public bool isEmptyEntry(byte[] buffer)
+            {
+                foreach (byte b in buffer)
+                {
+                    if (b != 0)
+                    {
+                        return false; //neu van con la entry
+                    }
+                }
+                return true; // neu kh la entry
+            }
+            public long calStartingAttribute(byte[] buffer)
+            {
+                return (long)BitConverter.ToInt16(buffer, 0x14);
+            }
+            public int calNumbOfEntries(byte[] buffer, long StartingAttribute)
+            {
+                long AttributeLength = (int)BitConverter.ToInt32(buffer, (int)StartingAttribute + 0x04); // Attribute Length of STANDARD
+
+                //attribute [1]: $FILE NAME
+                StartingAttribute += AttributeLength;
+                AttributeLength = (int)BitConverter.ToInt32(buffer, (int)StartingAttribute + 0x04);
+
+                //attribuute[2]: $DATA (Non-Resident)
+                StartingAttribute += AttributeLength;
+                long TotalMFTSize = (long)BitConverter.ToInt64(buffer, (int)StartingAttribute + 0x28);
+                return (int)TotalMFTSize / 1024;
+            }
+            public bool isFolder(byte[] buffer, ref string Type)
+            {
+                int flag = (int)BitConverter.ToInt16(buffer, 0x16);
+                if (flag == 0x01)
+                {
+                    Type = "File";
+                    return false;
+                }
+                if (flag == 0x03)
+                {
+                    Type = "Folder";
+                    return true;
+                }
+                return true;
+            }
+            public bool isDelete(byte[] buffer)
+            {
+                int flag = (int)BitConverter.ToInt16(buffer, 0x16);
+                if (flag == 0x00 || flag == 0x02)
+                    return true;
+                return false;
+            }
+            public bool isResident(byte[] buffer, int StartingAttribute)
+            {
+                int temp = (int)buffer[StartingAttribute + 0x08];
+                if (temp == 0x00)
+                    return true;
+                if (temp == 0x01)
+                    return false;
+                return false;
+            }
+
+            public void StandardInformation_Reader(byte[] buffer, ref int StartingAttribute, ref DateTime CreatedTime, ref DateTime LastModified)
+            {
+
+                long Datetemp = 0;
+                //Created Time
+                Datetemp = (long)BitConverter.ToInt64(buffer, (int)StartingAttribute + 0x18);
+                CreatedTime = DateTime.FromFileTime(Datetemp).ToLocalTime();
+
+                //Last Modified Time
+                Datetemp = (long)BitConverter.ToInt64(buffer, (int)StartingAttribute + 0x18 + 0x08);
+                LastModified = DateTime.FromFileTime(Datetemp).ToLocalTime();
+
+                //Update for the next attribute
+                int AttributeLength = (int)BitConverter.ToInt32(buffer, (int)StartingAttribute + 0x04);
+                StartingAttribute += AttributeLength;
+
+
+            }
+            public void FileName_Reader(byte[] buffer, ref int StartingAttribute, ref int ParentID, ref bool isReadOnly, ref bool isHidden, ref bool isSystem, ref string FileName)
+            {
+
+                // Get name of file
+                int FileNameLength = (int)buffer[StartingAttribute + 0x58];
+                FileName = Encoding.Unicode.GetString(buffer, StartingAttribute + 0x5A, FileNameLength * 2);
+
+                //get parent id of file
+                ParentID = calcuParentID(buffer, StartingAttribute);
+
+                //Check its property
+                int PropertyIndex = (int)StartingAttribute + 0x50;
+                int Property = (int)BitConverter.ToInt32(buffer, PropertyIndex);
+                isReadOnly = GetBitValue(Property, 0);
+                isHidden = GetBitValue(Property, 1);
+                isSystem = GetBitValue(Property, 2);
+
+                //Update StartingAttribute
+                int AttributeLength = (int)BitConverter.ToInt32(buffer, (int)StartingAttribute + 0x04);
+                StartingAttribute += AttributeLength;
+
+
+            }
+            public void Data_Reader(byte[] buffer, ref int StartingAttribute, ref long SizeOfFile, ref string Type)
+            {
+                //Check Resident or non-resident
+
+                if (SizeOfFile == -1)
+                {
+                    if (isResident(buffer, StartingAttribute))
+                        SizeOfFile = (int)BitConverter.ToInt32(buffer, 0x04);
+                    else
+                        SizeOfFile = (long)BitConverter.ToInt64(buffer, StartingAttribute + 0x30);
+
+                }
+                if (SizeOfFile != -1 && !isResident(buffer, StartingAttribute))
+                {
+                    SizeOfFile = (long)BitConverter.ToInt64(buffer, StartingAttribute + 0x30);
+                }
+                //if (isResident(buffer, StartingAttribute))
+                //    SizeOfFile = (int)BitConverter.ToInt32(buffer, 0x04);
+                //else
+                //    SizeOfFile = (long)BitConverter.ToInt64(buffer, StartingAttribute + 0x30);
+
+                //Update StartingAttribute
+                int AttributeLength = (int)BitConverter.ToInt32(buffer, (int)StartingAttribute + 0x04);
+                StartingAttribute += AttributeLength;
+
+            }
+            public int CheckEND(byte[] buffer, int StartingAttribute)
+            {
+                return (int)BitConverter.ToInt32(buffer, StartingAttribute);
+            }
+            public int calcuEntryID(byte[] buffer)
+            {
+                return (int)BitConverter.ToInt32(buffer, 0x2C);
+            }
+            public int calcuParentID(byte[] buffer, int StartingAttribute)
+            {
+                int ParentIDIndex = StartingAttribute + 0x18;
+                byte[] temp = new byte[8] { buffer[ParentIDIndex], buffer[ParentIDIndex + 2], buffer[ParentIDIndex + 2], buffer[ParentIDIndex + 3], buffer[ParentIDIndex + 4], buffer[ParentIDIndex + 5], 0, 0 };
+                return (int)BitConverter.ToInt64(temp, 0);
+            }
+            public List<NodeInfo> File_Reader_NTFS(string DriveName, long StartingPartition)
+            {
+                List<NodeInfo> res = new List<NodeInfo>();
+                NodeInfo rootNode = new NodeInfo();
+                rootNode.Index = 5;
+                rootNode.ParentIndex = -1;
+                res.Add(rootNode);
+
+                DateTime CreatedTime = DateTime.Now;
+                DateTime LastModified = DateTime.Now;
+                int ParentID = 0;
+                bool isReadOnly = false, isHidden = false, isSystem = false;
+                string FileName = "";
+                long SizeOfFile = -1;
+                int EntryID = 0;
+                string Type = "";
+
+                long MFTStartInByte = (long)(StartingClusterMFT * SectorsPerCluster * BytesPerSector + StartingPartition * 512);
+                long offset = MFTStartInByte;
+
+                using (FileStream fs = new FileStream(DriveName, FileMode.Open, FileAccess.Read))
+                {
+                    fs.Seek(offset, SeekOrigin.Begin);
+                    fs.Read(buffer, 0, buffer.Length);
+                    int count = 0;
+                    int StartingAttribute = (int)calStartingAttribute(buffer);
+                    int NumOfEntry = calNumbOfEntries(buffer, StartingAttribute);
+                    while (count < NumOfEntry)
+                    {
+                        StartingAttribute = (int)calStartingAttribute(buffer);
+                        if (isDelete(buffer))
+                        {
+                            count++;
+                            offset = MFTStartInByte + count * 1024;
+                            fs.Seek(offset, SeekOrigin.Begin);
+                            fs.Read(buffer, 0, buffer.Length);
+                        }
+                        else
+                        {
+                            if (isFolder(buffer, ref Type))
+                                SizeOfFile = 0;
+
+                            if (!isEmptyEntry(buffer))
+                            {
+                                //StartingAttribute = (int)calStartingAttribute(buffer);
+                                EntryID = calcuEntryID(buffer);
+                                while (CheckEND(buffer, StartingAttribute) != -1)
+                                {
+                                    if (buffer[StartingAttribute] == STANDARD_INFORMATION)
+                                    {
+                                        StandardInformation_Reader(buffer, ref StartingAttribute, ref CreatedTime, ref LastModified);
+                                    }
+                                    else if (buffer[StartingAttribute] == FILE_NAME)
+                                    {
+                                        FileName_Reader(buffer, ref StartingAttribute, ref ParentID, ref isReadOnly, ref isHidden, ref isSystem, ref FileName);
+                                        if (isSystem || FileName.Contains("$"))
+                                        {
+                                            break;
+                                        }
+                                    }
+                                    else if (buffer[StartingAttribute] == DATA)
+                                    {
+                                        Data_Reader(buffer, ref StartingAttribute, ref SizeOfFile, ref Type);
+                                    }
+                                    else
+                                    {
+                                        int AttributeLength = (int)BitConverter.ToInt32(buffer, (int)StartingAttribute + 0x04);
+                                        StartingAttribute += AttributeLength;
+                                    }
+                                }
+
+                                if (!isSystem && !FileName.Contains("$"))
+                                {
+
+                                    #region print info
+
+                                    NodeInfo node = new NodeInfo();
+                                    node.Index = EntryID;
+                                    node.ParentIndex = ParentID;
+                                    node.isReadOnly = isReadOnly ? "True" : "False";
+                                    node.isSystem = isSystem ? "True" : "False";
+                                    node.isHidden = isHidden ? "True" : "False";
+                                    node.date = CreatedTime.ToString();
+                                    node.timeModified = LastModified.ToString();
+                                    node.fullpath = FileName;
+                                  
+                                    node.type = Type;
+                                    node.size = (ulong)SizeOfFile;
+                                    node.isExpanded = false;
+
+                                    res.Add(node);
+                                     #endregion
+
+                                }
+                            }
+                            else
+                            {
+                                count++;
+                                offset = MFTStartInByte + count * 1024;
+                                fs.Seek(offset, SeekOrigin.Begin);
+                                fs.Read(buffer, 0, buffer.Length);
+                            }
+
+
+                            count++;
+                            offset = MFTStartInByte + count * 1024;
+                            fs.Seek(offset, SeekOrigin.Begin);
+                            fs.Read(buffer, 0, buffer.Length);
+                        }
+                    }
+                }
+                return res;
+            }
+            public void print()
+            {
+                Console.WriteLine("File system: " + SystemFileName); // File system
+                Console.WriteLine("Bytes per sector                     : " + BytesPerSector);
+                Console.WriteLine("Sectors per cluster                  : " + SectorsPerCluster);
+                Console.WriteLine("Sectors per track                    : " + SectorsPerTrack);
+                Console.WriteLine("Number of heads                      : " + NumOfHeads);
+                Console.WriteLine("Number of sectors                    : " + TotalSectors);
+                Console.WriteLine("The starting cluster of MFT          : " + StartingClusterMFT);
+                Console.WriteLine("The starting cluster of MFT (back-up): " + StartingClusterMFT_mirror);
+                Console.WriteLine("Bytes per entry in MFT               : " + BytesPerEntry);
+                Console.WriteLine();
+            }
+
         }
 
         public class FAT
@@ -95,6 +418,8 @@ namespace OS_Project.Views
             public ulong starting_position { get; set; }
         }
 
+        
+
         public class NodeInfo : ObservableObject
         {
             public string fullpath { get; set; }
@@ -113,6 +438,9 @@ namespace OS_Project.Views
             public string isSystem { get; set; }
             public string isVolLabel { get; set; }
             public string isReadOnly { get; set; }
+            public int Index { get; set; }
+            public int ParentIndex { get; set; }
+            public string type { get; set; }
 
             public NodeInfo() {}
 
@@ -121,19 +449,23 @@ namespace OS_Project.Views
                 fullpath = _a.fullpath;
                 RDET_start = _a.RDET_start;
                 sub_dir_start = _a.sub_dir_start;
-                isFile = _a.isFile;
+                isFile = _a.isFile ? _a.isFile : false;
                 isExpanded = _a.isExpanded;
                 size = _a.size;
                 date = _a.date;
                 time = _a.time;
                 timeModified = _a.timeModified;
-
                 isArchive = _a.isArchive;
                 isDirectory = _a.isDirectory;
                 isHidden = _a.isHidden;
                 isSystem = _a.isSystem;
                 isVolLabel = _a.isVolLabel;
                 isReadOnly = _a.isReadOnly;
+                type = _a.type;
+                if (type != "") isFile = (type == "File") ? true : false;
+                Index = _a.Index;
+                ParentIndex=_a.ParentIndex;
+
                 OnPropertyChanged("Tag");
             }
         }
@@ -225,18 +557,161 @@ namespace OS_Project.Views
             Button clickedButton = sender as Button;
 
             Driver info = (Driver)clickedButton.Tag;
-
+         
+            FolderView.Items.Clear();
             if (info.type == "NTFS")
             {
 
+                    byte[] buffer = new byte[512];
+                    using (FileStream fs = new FileStream(PATH, FileMode.Open, FileAccess.Read))
+                    {
+                        fs.Seek((long)info.starting_position, SeekOrigin.Begin);
+                        fs.Read(buffer, 0, buffer.Length);
+                    }
+                    NTFS newNTFS = NTFS_VBR(buffer);
+
+                    List<NodeInfo> input = newNTFS.File_Reader_NTFS(PATH, (long)info.starting_position / 512);
+                    Node root = ConstructTree(input);
+               
+                    displayNTFSTree(root, null, info.name);
             } else
             {
                 FAT fat = new FAT(info.starting_position, info.name);
-                FolderView.Items.Clear();
-
                 getFATFileFolderNames(fat.RDET, fat.starting_RDET, fat.driveName, null);
 
             }
+        }
+
+        public void displayNTFSTree(Node node, TreeViewItem item, string path)
+        {
+            foreach(Node child in node.children)
+            {
+                //MessageBox.Show(child.info.Index.ToString());
+                var sub_item = new TreeViewItem();
+                sub_item.Header = GetFileFolderName(child.info.fullpath);
+                child.info.fullpath = path + '\\' + child.info.fullpath;
+                sub_item.DataContext = path + '\\' + child.info.fullpath;
+                sub_item.Tag = new Node(child.info, child.children);
+                sub_item.DataContext = child.info.fullpath;
+                sub_item.MouseDoubleClick += NTFS_TreeItem_DoubleClicked;
+
+                if (child.children.Count > 0)
+                {
+                    sub_item.Items.Add(null);
+                    sub_item.Expanded += NTFS_Folder_Expanded;
+                    sub_item.Collapsed += NTFS_Folder_Collapsed;
+                    sub_item.MouseDoubleClick -= NTFS_TreeItem_DoubleClicked;
+                }
+
+                if (item == null)
+                {
+
+                    FolderView.Items.Add(sub_item);
+                }
+                else
+                {
+                    item.Items.Add(sub_item);
+                }
+            }
+        }
+
+        private void NTFS_Folder_Expanded(object sender, RoutedEventArgs e)
+        {
+            if (!e.Handled)
+            {
+                #region Get current TreeViewItem and its data
+                TreeViewItem item = (TreeViewItem)sender;
+                Node node = (Node)item.Tag;
+
+                #endregion
+
+                //change the icon of folder from close to expanded
+                node.info.isExpanded = true;
+                item.Tag = new Node(node.info, node.children);
+
+                #region Display detail info
+
+                FName.Text = GetFileFolderName(node.info.fullpath);
+                FSize.Text = node.info.size.ToString();
+                FDate.Text = node.info.date.Remove(node.info.date.IndexOf(" "), node.info.date.Length - node.info.date.IndexOf(" "));
+                FTime.Text =  node.info.date.Substring(node.info.date.IndexOf(" "), node.info.date.Length - node.info.date.IndexOf(" "));
+                FHidden.Text = node.info.isHidden;
+                FSystem.Text = node.info.isSystem;
+                FReadOnly.Text = node.info.isReadOnly;
+                FTimeModified.Text = node.info.timeModified;
+                FArchive.Text = node.info.isFile ? "True" : "False";
+                FDirectory.Text = node.info.isFile ? "False" : "True";
+                #endregion
+
+                e.Handled = true;
+
+                #region check if the list contain only dummy data and if yes clear it
+                if (item.Items.Count != 1 || item.Items[0] != null) return;
+
+                item.Items.Clear();
+                #endregion
+
+
+                displayNTFSTree(node, item, node.info.fullpath);
+            }
+        }
+
+        private void NTFS_Folder_Collapsed(object sender, RoutedEventArgs e)
+        {
+
+            if (!e.Handled)
+            {
+                #region Get current TreeViewItem and its data
+                TreeViewItem item = (TreeViewItem)sender;
+                Node node = (Node)item.Tag;
+
+                #endregion
+
+                //change the icon of folder from close to expanded
+                node.info.isExpanded = false;
+                item.Tag = new Node(node.info, node.children);
+
+                #region Display detail info
+
+                FName.Text = GetFileFolderName(node.info.fullpath);
+                FSize.Text = node.info.size.ToString();
+                FDate.Text = node.info.date.Remove(node.info.date.IndexOf(" "), node.info.date.Length - node.info.date.IndexOf(" "));
+                FTime.Text = node.info.date.Substring(node.info.date.IndexOf(" "), node.info.date.Length - node.info.date.IndexOf(" "));
+                FHidden.Text = node.info.isHidden;
+                FSystem.Text = node.info.isSystem;
+                FReadOnly.Text = node.info.isReadOnly;
+                FTimeModified.Text = node.info.timeModified;
+                FArchive.Text = node.info.isFile ? "True" : "False";
+                FDirectory.Text = node.info.isFile ? "False" : "True";
+
+                #endregion
+
+                e.Handled = true;
+            }
+        }
+
+
+
+        public NTFS NTFS_VBR(byte[] buffer)
+        {
+            uint BytesPerSector = (uint)BitConverter.ToUInt16(buffer, 0x0B);      //bytes per sector
+            uint SectorsPerCluster = (uint)buffer[0x0D];                        //sectors per cluster
+            uint SectorsPerTrack = BitConverter.ToUInt16(buffer, 0x18);         //Sectors per track
+            uint NumOfHeads = BitConverter.ToUInt16(buffer, 0x1A);                    //Number of heads
+            uint TotalSectors = (uint)BitConverter.ToUInt64(buffer, 0x28);            //Number of sectors
+            uint StartingClusterMFT = (uint)BitConverter.ToUInt64(buffer, 0x30);   //The starting cluster of MFT
+            uint StartingCLusterMFT_mirror = (uint)BitConverter.ToUInt64(buffer, 0x30);   //The starting cluster of MFT (back-up)
+            uint BytesPerEntry_temp = (uint)buffer[0x40];
+            BytesPerEntry_temp = (~BytesPerEntry_temp + 1) & 0xFF;
+            long BytesPerEntry = (long)Math.Pow(2, Math.Abs(BytesPerEntry_temp));  //Bytes per entry in MFT 2^|bu2|
+            NTFS newNTFS = new NTFS((uint)BytesPerSector, SectorsPerCluster, SectorsPerTrack, NumOfHeads, TotalSectors, StartingClusterMFT, StartingCLusterMFT_mirror, (uint)BytesPerEntry);
+
+            //newNTFS.print();
+            return newNTFS;
+        }
+
+        public void getNTFSFileFolderNames()
+        {
 
         }
 
@@ -255,8 +730,6 @@ namespace OS_Project.Views
             // return the string after the last backslash(the name we want to find)
             return path.Substring(lastIndex + 1);
         }
-
-
 
         public void getFATFileFolderNames(byte[] data, ulong starting_RDET, string path, TreeViewItem item)
         {
@@ -375,6 +848,32 @@ namespace OS_Project.Views
                 FReadOnly.Text = info.isReadOnly;
                 FTimeModified.Text = info.timeModified;
 
+                #endregion
+
+                e.Handled = true;
+            }
+        }
+
+        private void NTFS_TreeItem_DoubleClicked(object sender, RoutedEventArgs e)
+        {
+
+            if (!e.Handled)
+            {
+                TreeViewItem item = sender as TreeViewItem;
+                Node node = (Node)item.Tag;
+
+                #region Display detail info
+
+                FName.Text = GetFileFolderName(node.info.fullpath);
+                FSize.Text = node.info.size.ToString();
+                FDate.Text = node.info.date.Remove(node.info.date.IndexOf(" "), node.info.date.Length - node.info.date.IndexOf(" "));
+                FTime.Text = node.info.date.Substring(node.info.date.IndexOf(" "), node.info.date.Length - node.info.date.IndexOf(" "));
+                FHidden.Text = node.info.isHidden;
+                FSystem.Text = node.info.isSystem;
+                FReadOnly.Text = node.info.isReadOnly;
+                FTimeModified.Text = node.info.timeModified;
+                FArchive.Text = node.info.isFile ? "True" : "False";
+                FDirectory.Text = node.info.isFile ? "False" : "True";
                 #endregion
 
                 e.Handled = true;
@@ -590,5 +1089,82 @@ namespace OS_Project.Views
         #endregion
 
         #endregion
+
+        public class NodeInfoNTFS : ObservableObject
+        {
+            public int Index { get; set; }
+            public int ParentIndex { get; set; }
+            public string isReadOnly { get; set; }
+            public string isHidden { get; set; }
+            public string isSystem { get; set; }
+            public string date { get; set; }
+            public string dateModified { get; set; }
+            public string type { get; set; }
+            public string name { get; set; }
+            public long size { get; set; }
+            public bool isExpanded { get; set; }
+
+            public NodeInfoNTFS() { }
+
+            public NodeInfoNTFS(NodeInfoNTFS _a)
+            {
+                Index = _a.Index; 
+                ParentIndex = _a.ParentIndex;
+                isReadOnly = _a.isReadOnly; 
+                isHidden = _a.isHidden; 
+                date = _a.date; 
+                dateModified = _a.dateModified; 
+                type = _a.type; 
+                name = _a.name;
+                size = _a.size;
+                isSystem = _a.isSystem;
+            }
+        }
+
+        public class Node
+        {
+            public NodeInfo info;
+            public List<Node> children = new List<Node>();
+
+            public Node(NodeInfo _a)
+            {
+                info = new NodeInfo(_a);
+            }
+            public Node(NodeInfo _a, List<Node> _children)
+            {
+                info = new NodeInfo(_a);
+                children = _children;
+            }
+        }
+
+        private Node ConstructTree(List<NodeInfo> input)
+        {
+            Dictionary<int, Node> nodes = new Dictionary<int, Node> ();
+            foreach (NodeInfo data in input)
+            {
+                nodes[data.Index] = new Node(data);
+            }
+            foreach (NodeInfo data in input)
+            {
+                if (nodes.ContainsKey(data.ParentIndex))
+                {
+                    nodes[data.ParentIndex].children.Add(new Node(data));
+                }
+            }
+
+            return BuildTree(nodes, 5);
+        }
+
+        private Node BuildTree(Dictionary<int, Node> nodes, int nodeID)
+        {
+            Node node = nodes[nodeID];
+            List<Node> children = new List<Node>();
+            foreach(Node child in node.children)
+            {
+                children.Add(BuildTree(nodes, child.info.Index));
+            }
+            node.children = children;
+            return node;
+        }
     }
 }

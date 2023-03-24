@@ -141,5 +141,10 @@
     <Resource Include="images\open-folder.png" />
     <Resource Include="images\usb.png" />
   </ItemGroup>
+  <ItemGroup>
+    <Resource Include="images\nhi.png" />
+    <Resource Include="images\nien.png" />
+    <Resource Include="images\phi.png" />
+  </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

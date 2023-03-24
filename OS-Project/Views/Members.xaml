@@ -6,7 +6,42 @@
              xmlns:local="clr-namespace:OS_Project.Views"
              mc:Ignorable="d" 
              d:DesignHeight="450" d:DesignWidth="800">
-    <Grid Background="Blue">
-            
+    <Grid Background="white">
+        <TextBlock Margin="0 36 0 0" FontSize="28" Text="Group members" FontWeight="Bold" TextAlignment="Center"/>
+        <Grid>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition></ColumnDefinition>
+                <ColumnDefinition></ColumnDefinition>
+                <ColumnDefinition></ColumnDefinition>
+            </Grid.ColumnDefinitions>
+
+            <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                <Image Source="/images/nhi.png"/>
+                <Border Background="#B4E4FF" CornerRadius="8" Margin="12 0 12 0">
+                    <StackPanel Margin="4">
+                        <TextBlock FontSize="16" FontWeight="Bold" Foreground="White" Text="Fa Ngoc Uyen Nhi" TextAlignment="Center"/>
+                        <TextBlock FontSize="16" FontWeight="Bold" Foreground="White" Text="21127661" TextAlignment="Center"/>
+                    </StackPanel>
+                </Border>
+            </StackPanel>
+            <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                <Image Source="/images/nien.png" Margin="0 -130 0 0"/>
+                <Border Background="#B4E4FF" CornerRadius="8">
+                    <StackPanel Margin="4">
+                        <TextBlock FontSize="16" FontWeight="Bold" Foreground="White" Text="Tran Dai Nien" TextAlignment="Center"/>
+                        <TextBlock FontSize="16" FontWeight="Bold" Foreground="White" Text="21127664" TextAlignment="Center"/>
+                    </StackPanel>
+                </Border>
+            </StackPanel>
+            <StackPanel Grid.Column="2" VerticalAlignment="Center">
+                <Image Source="/images/phi.png"/>
+                <Border Background="#B4E4FF" CornerRadius="8" Margin="12 0 12 0">
+                    <StackPanel Margin="4">
+                        <TextBlock FontSize="16" FontWeight="Bold" Foreground="White" Text="Nguyen Nhat Phi" TextAlignment="Center"/>
+                        <TextBlock FontSize="16" FontWeight="Bold" Foreground="White" Text="21127132" TextAlignment="Center"/>
+                    </StackPanel>
+                </Border>
+            </StackPanel>
+        </Grid>
     </Grid>
 </UserControl>

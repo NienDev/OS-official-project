@@ -1,4 +1,5 @@
 ﻿using System;
+using System.CodeDom.Compiler;
 using System.Globalization;
 using System.Windows.Data;
 using System.Windows.Media.Imaging;
@@ -16,10 +17,20 @@ namespace OS_Project
 
         public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
         {
-            NodeInfo info = (NodeInfo)value;
-            
-            bool isFile = info.isFile;
-            bool isExpanded = info.isExpanded;
+            bool isFile;
+            bool isExpanded;
+
+            if (value is Node)
+            {
+                Node temp = (Node)value;
+                isFile = temp.info.isFile;
+                isExpanded = temp.info.isExpanded;
+            } else
+            {
+                NodeInfo info = (NodeInfo)value;
+                isFile = info.isFile;
+                isExpanded = info.isExpanded;
+            }
 
             string image = "images/open-folder.png";
 
