@@ -147,6 +147,18 @@ namespace OS_Project.Views
                     return false;
                 return false;
             }
+            public bool isZoneIdentifier(byte[] buffer, int StartingAttribute)
+            {
+                //string Name = "";
+                int NameLength = (int)buffer[StartingAttribute + 0x09];
+                //int NameOffset = (int)BitConverter.ToInt16(buffer, StartingAttribute + 0xA);
+                if (NameLength != 0)
+                {
+                    //Name = Encoding.Unicode.GetString(buffer,StartingAttribute + NameOffset, NameLength * 2);
+                    return true;
+                }
+                return false;
+            }
 
             public void StandardInformation_Reader(byte[] buffer, ref int StartingAttribute, ref DateTime CreatedTime, ref DateTime LastModified, ref bool isReadOnly, ref bool isHidden, ref bool isSystem)
             {
@@ -183,8 +195,6 @@ namespace OS_Project.Views
                 //get parent id of file
                 ParentID = calcuParentID(buffer, StartingAttribute);
 
-                
-
                 //Update StartingAttribute
                 int AttributeLength = (int)BitConverter.ToInt32(buffer, (int)StartingAttribute + 0x04);
                 StartingAttribute += AttributeLength;
@@ -195,17 +205,16 @@ namespace OS_Project.Views
             {
                 //Check Resident or non-resident
 
-                if (SizeOfFile == -1)
+                if (!isZoneIdentifier(buffer, StartingAttribute))
                 {
                     if (isResident(buffer, StartingAttribute))
-                        SizeOfFile = (int)BitConverter.ToInt32(buffer, StartingAttribute + 0x10);
+                    {
+                        SizeOfFile = (long)BitConverter.ToInt32(buffer, StartingAttribute + 0x10);
+                    }
                     else
+                    {
                         SizeOfFile = (long)BitConverter.ToInt64(buffer, StartingAttribute + 0x30);
-
-                }
-                if (SizeOfFile != -1 && !isResident(buffer, StartingAttribute))
-                {
-                    SizeOfFile = (long)BitConverter.ToInt64(buffer, StartingAttribute + 0x30);
+                    }
                 }
                 //if (isResident(buffer, StartingAttribute))
                 //    SizeOfFile = (int)BitConverter.ToInt32(buffer, 0x04);
@@ -260,7 +269,7 @@ namespace OS_Project.Views
                     int NumOfEntry = calNumbOfEntries(buffer, StartingAttribute);
                     while (count < NumOfEntry)
                     {
-                        SizeOfFile = -1;
+                        EntryID = calcuEntryID(buffer);
                         StartingAttribute = (int)calStartingAttribute(buffer);
                         if (isDelete(buffer))
                         {
@@ -712,11 +721,6 @@ namespace OS_Project.Views
 
             //newNTFS.print();
             return newNTFS;
-        }
-
-        public void getNTFSFileFolderNames()
-        {
-
         }
 
         public static string GetFileFolderName(string path)
