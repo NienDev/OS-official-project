@@ -4,11 +4,11 @@
 winexe
 C#
 .cs
-C:\Users\Nien\Downloads\phòng hờ\OS-official-project\OS-Project\obj\Debug\
+C:\Users\Nien\Downloads\phòng hờ\OS-official-project\OS-Project\obj\Release\
 OS_Project
 none
 false
-DEBUG;TRACE
+TRACE
 C:\Users\Nien\Downloads\phòng hờ\OS-official-project\OS-Project\App.xaml
 41663641820
 
@@ -16,5 +16,5 @@ C:\Users\Nien\Downloads\phòng hờ\OS-official-project\OS-Project\App.xaml
 14-2073033544
 MainWindow.xaml;Views\About.xaml;Views\Members.xaml;Views\TreeView.xaml;
 
-False
+True
 
