@@ -20,17 +20,18 @@ namespace OS_Project
             bool isFile;
             bool isExpanded;
 
-            if (value is Node)
-            {
+            
                 Node temp = (Node)value;
-                isFile = temp.info.isFile;
+                if (temp.info.type != null)
+                {
+                    isFile = temp.info.type == "File" ? true : false;
+                }else
+                {
+                    isFile = temp.info.isArchive == "True" ? true : false;
+                }
+                
                 isExpanded = temp.info.isExpanded;
-            } else
-            {
-                NodeInfo info = (NodeInfo)value;
-                isFile = info.isFile;
-                isExpanded = info.isExpanded;
-            }
+            
 
             string image = "images/open-folder.png";
 

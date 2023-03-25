@@ -303,7 +303,7 @@ namespace OS_Project.Views
                                 if (!isSystem && !FileName.Contains("$"))
                                 {
 
-                                    #region print info
+                                    #region info
 
                                     NodeInfo node = new NodeInfo();
                                     node.Index = EntryID;
@@ -441,6 +441,7 @@ namespace OS_Project.Views
             public int Index { get; set; }
             public int ParentIndex { get; set; }
             public string type { get; set; }
+            public int sectorPerCluster { get; set; }
 
             public NodeInfo() {}
 
@@ -462,6 +463,7 @@ namespace OS_Project.Views
                 isVolLabel = _a.isVolLabel;
                 isReadOnly = _a.isReadOnly;
                 type = _a.type;
+                sectorPerCluster = _a.sectorPerCluster;
                 if (type != "") isFile = (type == "File") ? true : false;
                 Index = _a.Index;
                 ParentIndex=_a.ParentIndex;
@@ -576,12 +578,17 @@ namespace OS_Project.Views
                     displayNTFSTree(root, null, info.name);
             } else
             {
+          
                 FAT fat = new FAT(info.starting_position, info.name);
-                getFATFileFolderNames(fat.RDET, fat.starting_RDET, fat.driveName, null);
+                //getFATFileFolderNames(fat.RDET, fat.starting_RDET, fat.driveName, (int)fat.SectorsPerCluster, null);
+                Node root = new Node();
+                getFATFileFolderNames(fat.RDET, fat.starting_RDET, (int)fat.SectorsPerCluster, ref root);
 
+                displayFATTree(root, null, info.name);
             }
         }
 
+       
         public void displayNTFSTree(Node node, TreeViewItem item, string path)
         {
             foreach(Node child in node.children)
@@ -601,6 +608,39 @@ namespace OS_Project.Views
                     sub_item.Expanded += NTFS_Folder_Expanded;
                     sub_item.Collapsed += NTFS_Folder_Collapsed;
                     sub_item.MouseDoubleClick -= NTFS_TreeItem_DoubleClicked;
+                }
+
+                if (item == null)
+                {
+
+                    FolderView.Items.Add(sub_item);
+                }
+                else
+                {
+                    item.Items.Add(sub_item);
+                }
+            }
+        }
+
+        public void displayFATTree(Node node, TreeViewItem item, string path)
+        {
+            foreach (Node child in node.children)
+            {
+                //MessageBox.Show(child.info.Index.ToString());
+                var sub_item = new TreeViewItem();
+                sub_item.Header = GetFileFolderName(child.info.fullpath);
+                child.info.fullpath = path + '\\' + child.info.fullpath;
+                sub_item.DataContext = path + '\\' + child.info.fullpath;
+                sub_item.Tag = new Node(child.info, child.children);
+                sub_item.DataContext = child.info.fullpath;
+                sub_item.MouseDoubleClick += TreeItem_DoubleClicked;
+
+                if (child.children.Count > 0)
+                {
+                    sub_item.Items.Add(null);
+                    sub_item.Expanded += Folder_Expanded;
+                    sub_item.Collapsed += Folder_Collapsed;
+                    sub_item.MouseDoubleClick -= TreeItem_DoubleClicked;
                 }
 
                 if (item == null)
@@ -731,15 +771,17 @@ namespace OS_Project.Views
             return path.Substring(lastIndex + 1);
         }
 
-        public void getFATFileFolderNames(byte[] data, ulong starting_RDET, string path, TreeViewItem item)
+        public void getFATFileFolderNames( byte[] data, ulong starting_RDET, int sectorPerCluster, ref Node node)
         {
 
             int index = 0;
-
+            int count = 0;
             //Iterate through each entry of the directory
             string name = "";
             while (data[index * 32] != 0) // while this entry is not empty
             {
+               
+
                 if (data[index * 32] != 0xE5) // if file/folder was NOT deleted 
                 {
                     if (data[index * 32 + 11] == 0x0F) // if this is long entry
@@ -748,20 +790,29 @@ namespace OS_Project.Views
                     }
                     else // this a short entry
                     {
+
                         if (name == "") // if there is no long entry, take the name from short entry -> vi tri 00(11 bytes)
                         {
                             if (data[index * 32 + 11] == 0x20) // if entry is file
                                 name = Encoding.ASCII.GetString(data, index * 32, 8).TrimEnd() + "." + Encoding.ASCII.GetString(data, index * 32 + 8, 3).TrimEnd();
                             else name = Encoding.ASCII.GetString(data, index * 32, 8).TrimEnd(); //entry is folder
                         }
-                        name = name.Replace("?", ""); 
+                        name = name.Replace("?", "");
 
+                        #region UI
                         // UI: create a TreeViewItem
-                        var sub_item = new TreeViewItem();
-                        sub_item.Header = name;
+                        //var sub_item = new TreeViewItem();
+                        //sub_item.Header = name;
 
-                        NodeInfo info = new NodeInfo() {
-                            fullpath = path + '\\' + name,
+
+                        //sub_item.Tag = info; // store Info of current TreeViewItem in a tag
+                        //sub_item.DataContext = info.fullpath;  // use to store the fullpath of file/folder
+                        //sub_item.MouseDoubleClick += TreeItem_DoubleClicked;
+                        #endregion
+
+                        NodeInfo info = new NodeInfo()
+                        {
+                            fullpath = name,
                             RDET_start = starting_RDET,
                             sub_dir_start = 0,
                             isFile = true,
@@ -775,55 +826,90 @@ namespace OS_Project.Views
                             isHidden = isHidden(data, index * 32),
                             isReadOnly = isReadOnly(data, index * 32),
                             isSystem = isSystem(data, index * 32),
-                            isVolLabel = isVolLabel(data, index * 32)
+                            isVolLabel = isVolLabel(data, index * 32),
+                            sectorPerCluster = sectorPerCluster
                         };
-
-                        sub_item.Tag = info; // store Info of current TreeViewItem in a tag
-                        sub_item.DataContext = info.fullpath;  // use to store the fullpath of file/folder
-                        sub_item.MouseDoubleClick += TreeItem_DoubleClicked;
+                     
 
                         if (data[index * 32 + 11] != 0x16 && data[index * 32 + 11] != 0x08 && name != "." && name != ".." ) // ignore system file 
                         {
 
+                            node.children.Add(new Node(info));
                             if (data[index * 32 + 11] == 0x10) //folder
                             {
 
-                                ulong startingCluster = (ulong)BitConverter.ToInt16(data, index * 32 + 26);
+                                info.isFile = false;
 
-                                // UI
+                                ulong startingCluster = (ulong)BitConverter.ToInt16(data, index * 32 + 26);
+                                ulong starting_Subdir = starting_RDET + (startingCluster - 2) * (ulong)sectorPerCluster * 512;
+                                byte[] sub_dir = new byte[512];
+                                using (FileStream fs = new FileStream(PATH, FileMode.Open, FileAccess.Read))
+                                {
+                                    fs.Seek((long)(starting_Subdir), SeekOrigin.Begin); //
+                                    fs.Read(sub_dir, 0, sub_dir.Length);
+                                    fs.Close();
+                                }
+
+                                Node new_node = new Node();
+                                getFATFileFolderNames(sub_dir, starting_RDET, info.sectorPerCluster, ref new_node);
+                                foreach(Node child in new_node.children)
+                                {
+                                    node.children.Last<Node>().children.Add(child);
+                                }
+                                
+
+                                #region UI
 
                                 //check if folder contains any file or folder ?
 
-                                info.sub_dir_start = starting_RDET + (startingCluster - 2) * 8 * 512;
-                                info.isFile = false;
+                                //info.sub_dir_start = starting_RDET + (startingCluster - 2) * (ulong)sectorPerCluster * 512;
+                                //info.isFile = false;
 
 
-                                if (isAnyFileFolder(info.sub_dir_start))
-                                {
-                                    sub_item.Items.Add(null);
-                                    sub_item.Expanded += Folder_Expanded;
-                                    sub_item.Collapsed += Folder_Collapsed;
-                                    sub_item.MouseDoubleClick -= TreeItem_DoubleClicked;
-                                }
+                                //if (isAnyFileFolder(info.sub_dir_start))
+                                //{
+                                //    sub_item.Items.Add(null);
+                                //    sub_item.Expanded += Folder_Expanded;
+                                //    sub_item.Collapsed += Folder_Collapsed;
+                                //    sub_item.MouseDoubleClick -= TreeItem_DoubleClicked;
+                                //}
+                                #endregion
 
-                                //startingClusters.Enqueue();
                             }
 
-                            if (item == null)
-                            {
-                                FolderView.Items.Add(sub_item);
-                            }
-                            else
-                            {
-                                item.Items.Add(sub_item);
-                            }
+
+
+                            #region UI
+                            //if (item == null)
+                            //{
+                            //    FolderView.Items.Add(sub_item);
+                            //}
+                            //else
+                            //{
+                            //    item.Items.Add(sub_item);
+                            //}
+                            #endregion
+                            
                         }
+
                         name = "";
 
                     }
                 }
                 index++;
+                if (index * 32 >= 512)
+                {
+                    index = 0;
+                    count++;
+                    using (FileStream fs = new FileStream(PATH, FileMode.Open, FileAccess.Read))
+                    {
+                        fs.Seek((long)(starting_RDET) + 512 * count, SeekOrigin.Begin); //
+                        fs.Read(data, 0, data.Length);
+                        fs.Close();
+                    }
+                }
             }
+         
         }
 
         private void TreeItem_DoubleClicked(object sender, RoutedEventArgs e)
@@ -832,21 +918,21 @@ namespace OS_Project.Views
             if (!e.Handled)
             {
                 TreeViewItem item = sender as TreeViewItem;
-                NodeInfo info = (NodeInfo)item.Tag;
+                Node node = (Node)item.Tag;
 
                 #region Display detail info
 
-                FName.Text = GetFileFolderName(info.fullpath);
-                FSize.Text = info.size.ToString();
-                FTime.Text = info.time;
-                FDate.Text = info.date;
-                FArchive.Text = info.isArchive;
-                FHidden.Text = info.isHidden;
-                FSystem.Text = info.isHidden;
-                FVolLabel.Text = info.isVolLabel;
-                FDirectory.Text = info.isDirectory;
-                FReadOnly.Text = info.isReadOnly;
-                FTimeModified.Text = info.timeModified;
+                FName.Text = GetFileFolderName(node.info.fullpath);
+                FSize.Text = node.info.size.ToString();
+                FTime.Text = node.info.time;
+                FDate.Text = node.info.date;
+                FArchive.Text = node.info.isArchive;
+                FHidden.Text = node.info.isHidden;
+                FSystem.Text = node.info.isHidden;
+                FVolLabel.Text = node.info.isVolLabel;
+                FDirectory.Text = node.info.isDirectory;
+                FReadOnly.Text = node.info.isReadOnly;
+                FTimeModified.Text = node.info.timeModified;
 
                 #endregion
 
@@ -901,25 +987,25 @@ namespace OS_Project.Views
             {
                 #region Get current TreeViewItem and its data
                 TreeViewItem item = (TreeViewItem)sender;
-                NodeInfo info = (NodeInfo)item.Tag;
+                Node node = (Node)item.Tag;
                 #endregion
 
-                info.isExpanded = false;
-                item.Tag = new NodeInfo(info);
+                  node.info.isExpanded = false;
+                item.Tag = new Node(node.info, node.children);
 
                 #region Display detail info
 
-                FName.Text = GetFileFolderName(info.fullpath);
-                FSize.Text = info.size.ToString();
-                FTime.Text = info.time;
-                FDate.Text = info.date;
-                FArchive.Text = info.isArchive;
-                FHidden.Text = info.isHidden;
-                FSystem.Text = info.isSystem;
-                FVolLabel.Text = info.isVolLabel;
-                FDirectory.Text = info.isDirectory;
-                FReadOnly.Text = info.isReadOnly;
-                FTimeModified.Text = info.timeModified;
+                FName.Text = GetFileFolderName(node.info.fullpath);
+                FSize.Text = node.info.size.ToString();
+                FTime.Text = node.info.time;
+                FDate.Text = node.info.date;
+                FArchive.Text = node.info.isArchive;
+                FHidden.Text = node.info.isHidden;
+                FSystem.Text = node.info.isSystem;
+                FVolLabel.Text = node.info.isVolLabel;
+                FDirectory.Text = node.info.isDirectory;
+                FReadOnly.Text = node.info.isReadOnly;
+                FTimeModified.Text = node.info.timeModified;
 
                 #endregion
 
@@ -935,27 +1021,28 @@ namespace OS_Project.Views
             {
                 #region Get current TreeViewItem and its data
                 TreeViewItem item = (TreeViewItem)sender;
-                NodeInfo info = (NodeInfo)item.Tag;
+                
+                Node node = (Node)item.Tag;
 
                 #endregion
 
                 //change the icon of folder from close to expanded
-                info.isExpanded = true;
-                item.Tag = new NodeInfo(info);
+                node.info.isExpanded = true;
+                item.Tag = new Node(node.info, node.children);
 
                 #region Display detail info
 
-                FName.Text = GetFileFolderName(info.fullpath);
-                FSize.Text = info.size.ToString();
-                FTime.Text = info.time;
-                FDate.Text = info.date;
-                FArchive.Text = info.isArchive;
-                FHidden.Text = info.isHidden;
-                FSystem.Text = info.isSystem;
-                FVolLabel.Text = info.isVolLabel;
-                FDirectory.Text = info.isDirectory;
-                FReadOnly.Text = info.isReadOnly;
-                FTimeModified.Text = info.timeModified;
+                FName.Text = GetFileFolderName(node.info.fullpath);
+                FSize.Text = node.info.size.ToString();
+                FTime.Text = node.info.time;
+                FDate.Text = node.info.date;
+                FArchive.Text = node.info.isArchive;
+                FHidden.Text = node.info.isHidden;
+                FSystem.Text = node.info.isSystem;
+                FVolLabel.Text = node.info.isVolLabel;
+                FDirectory.Text = node.info.isDirectory;
+                FReadOnly.Text = node.info.isReadOnly;
+                FTimeModified.Text = node.info.timeModified;
 
                 #endregion
 
@@ -969,18 +1056,18 @@ namespace OS_Project.Views
 
 
                 #region Get Sub_dir/Data of this TreeviewItem
-                byte[] sub_dir = new byte[512];
+                //byte[] sub_dir = new byte[512];
 
-                using (FileStream fs = new FileStream(PATH, FileMode.Open, FileAccess.Read))
-                {
-                    fs.Seek((long)(info.sub_dir_start), SeekOrigin.Begin); //
-                    fs.Read(sub_dir, 0, sub_dir.Length);
-                    fs.Close();
-                }
+                //using (FileStream fs = new FileStream(PATH, FileMode.Open, FileAccess.Read))
+                //{
+                //    fs.Seek((long)(info.sub_dir_start), SeekOrigin.Begin); //
+                //    fs.Read(sub_dir, 0, sub_dir.Length);
+                //    fs.Close();
+                //}
                 #endregion
 
-                getFATFileFolderNames(sub_dir, info.RDET_start, info.fullpath, item);
-                
+                //getFATFileFolderNames(sub_dir, info.RDET_start, info.fullpath, info.sectorPerCluster, item);
+                displayFATTree(node, item, node.info.fullpath);
                 
             }
 
@@ -1126,6 +1213,7 @@ namespace OS_Project.Views
             public NodeInfo info;
             public List<Node> children = new List<Node>();
 
+            public Node() { }
             public Node(NodeInfo _a)
             {
                 info = new NodeInfo(_a);
