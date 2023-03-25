@@ -50,3 +50,29 @@ C:\Users\Nien\Downloads\New folder\OS-official-project\OS-Project\obj\Debug\OS-P
 C:\Users\Nien\Downloads\New folder\OS-official-project\OS-Project\obj\Debug\OS-Project.csproj.CopyComplete
 C:\Users\Nien\Downloads\New folder\OS-official-project\OS-Project\obj\Debug\OS-Project.exe
 C:\Users\Nien\Downloads\New folder\OS-official-project\OS-Project\obj\Debug\OS-Project.pdb
+F:\OOP\OS-official-project\OS-Project\bin\Debug\OS-Project.exe.config
+F:\OOP\OS-official-project\OS-Project\bin\Debug\OS-Project.exe
+F:\OOP\OS-official-project\OS-Project\bin\Debug\OS-Project.pdb
+F:\OOP\OS-official-project\OS-Project\bin\Debug\FontAwesome.WPF.dll
+F:\OOP\OS-official-project\OS-Project\bin\Debug\FontAwesome.WPF.xml
+F:\OOP\OS-official-project\OS-Project\obj\Debug\OS-Project.csproj.AssemblyReference.cache
+F:\OOP\OS-official-project\OS-Project\obj\Debug\OS-Project.csproj.SuggestedBindingRedirects.cache
+F:\OOP\OS-official-project\OS-Project\obj\Debug\MainWindow.g.cs
+F:\OOP\OS-official-project\OS-Project\obj\Debug\Views\About.g.cs
+F:\OOP\OS-official-project\OS-Project\obj\Debug\Views\Members.g.cs
+F:\OOP\OS-official-project\OS-Project\obj\Debug\Views\TreeView.g.cs
+F:\OOP\OS-official-project\OS-Project\obj\Debug\App.g.cs
+F:\OOP\OS-official-project\OS-Project\obj\Debug\GeneratedInternalTypeHelper.g.cs
+F:\OOP\OS-official-project\OS-Project\obj\Debug\OS-Project_MarkupCompile.cache
+F:\OOP\OS-official-project\OS-Project\obj\Debug\OS-Project_MarkupCompile.lref
+F:\OOP\OS-official-project\OS-Project\obj\Debug\MainWindow.baml
+F:\OOP\OS-official-project\OS-Project\obj\Debug\Views\About.baml
+F:\OOP\OS-official-project\OS-Project\obj\Debug\Views\Members.baml
+F:\OOP\OS-official-project\OS-Project\obj\Debug\Views\TreeView.baml
+F:\OOP\OS-official-project\OS-Project\obj\Debug\OS-Project.g.resources
+F:\OOP\OS-official-project\OS-Project\obj\Debug\OS_Project.Properties.Resources.resources
+F:\OOP\OS-official-project\OS-Project\obj\Debug\OS-Project.csproj.GenerateResource.cache
+F:\OOP\OS-official-project\OS-Project\obj\Debug\OS-Project.csproj.CoreCompileInputs.cache
+F:\OOP\OS-official-project\OS-Project\obj\Debug\OS-Project.csproj.CopyComplete
+F:\OOP\OS-official-project\OS-Project\obj\Debug\OS-Project.exe
+F:\OOP\OS-official-project\OS-Project\obj\Debug\OS-Project.pdb
