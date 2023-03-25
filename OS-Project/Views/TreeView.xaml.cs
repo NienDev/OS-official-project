@@ -116,17 +116,15 @@ namespace OS_Project.Views
                 long TotalMFTSize = (long)BitConverter.ToInt64(buffer, (int)StartingAttribute + 0x28);
                 return (int)TotalMFTSize / 1024;
             }
-            public bool isFolder(byte[] buffer, ref string Type)
+            public bool isFolder(byte[] buffer)
             {
                 int flag = (int)BitConverter.ToInt16(buffer, 0x16);
                 if (flag == 0x01)
                 {
-                    Type = "File";
                     return false;
                 }
                 if (flag == 0x03)
                 {
-                    Type = "Folder";
                     return true;
                 }
                 return true;
@@ -280,8 +278,10 @@ namespace OS_Project.Views
                         }
                         else
                         {
-                            if (isFolder(buffer, ref Type))
-                                SizeOfFile = 0;
+                            if (isFolder(buffer))
+                                Type = "Folder";
+                            else
+                                Type = "File";
 
                             if (!isEmptyEntry(buffer))
                             {
